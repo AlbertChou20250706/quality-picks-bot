@@ -1,0 +1,64 @@
+name: quality-picks-report
+
+on:
+  schedule:
+    - cron: '0 0 1 * *'   # UTC 每月 1 日 00:00 = 台灣每月 1 日 08:00
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  screen-and-send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install -r requirements.txt
+
+      - run: python src/fetch_metrics.py
+
+      - run: python src/screen_and_rank.py
+
+      - name: Generate report
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python src/generate_report.py
+
+      - run: python src/build_flex.py
+
+      - name: Send to LINE
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_PUSH_TARGET_IDS: ${{ secrets.LINE_PUSH_TARGET_IDS }}
+        run: python src/send_line.py
+
+      - name: Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - run: git add reports/
+
+      - name: Commit report if changed
+        run: git diff --staged --quiet || git commit -m "quality picks $(date +%F)"
+
+      - name: Push report (retry on race)
+        run: |
+          for i in 1 2 3; do
+            git push && exit 0
+            echo "push rejected, pulling and retrying ($i)..."
+            git pull --rebase origin main
+          done
+          git push
+
+      - name: Notify failure
+        if: failure()
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_PUSH_TARGET_IDS: ${{ secrets.LINE_PUSH_TARGET_IDS }}
+        run: python src/notify_failure.py

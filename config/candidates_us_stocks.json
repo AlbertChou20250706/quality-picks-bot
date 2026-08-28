@@ -1,0 +1,10 @@
+[
+  {"symbol": "AAPL", "name": "蘋果"},
+  {"symbol": "MSFT", "name": "微軟"},
+  {"symbol": "GOOGL", "name": "Alphabet"},
+  {"symbol": "JNJ", "name": "嬌生"},
+  {"symbol": "PG", "name": "寶僑"},
+  {"symbol": "KO", "name": "可口可樂"},
+  {"symbol": "V", "name": "Visa"},
+  {"symbol": "MA", "name": "萬事達卡"}
+]
