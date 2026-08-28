@@ -119,7 +119,7 @@ def main() -> None:
     client = anthropic.Anthropic()
     response = client.messages.create(
         model=MODEL,
-        max_tokens=24000,
+        max_tokens=16000,
         output_config={"effort": "medium"},
         system=system_prompt,
         messages=[{"role": "user", "content": build_user_content(top_picks)}],
