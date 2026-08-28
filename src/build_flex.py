@@ -56,21 +56,24 @@ def etf_metrics_line(e: dict, currency: str) -> str:
 
 def pick_row(rank: int, entry: dict, is_etf: bool, currency: str) -> dict:
     metrics_line = etf_metrics_line(entry, currency) if is_etf else stock_metrics_line(entry)
+    contents = [
+        {
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+                text(f"{rank}. {entry['symbol']} {entry['name']}", size="sm", weight="bold", color=INK, flex=4),
+            ],
+        },
+        text(metrics_line, size="xxs", color=MUTED, margin="xs"),
+    ]
+    if entry.get("note"):
+        contents.append(text(entry["note"], size="xxs", color=INK, margin="xs"))
     return {
         "type": "box",
         "layout": "vertical",
         "margin": "sm",
         "paddingBottom": "sm",
-        "contents": [
-            {
-                "type": "box",
-                "layout": "horizontal",
-                "contents": [
-                    text(f"{rank}. {entry['symbol']} {entry['name']}", size="sm", weight="bold", color=INK, flex=4),
-                ],
-            },
-            text(metrics_line, size="xxs", color=MUTED, margin="xs"),
-        ],
+        "contents": contents,
     }
 
 
@@ -79,8 +82,6 @@ def category_block(category: dict) -> list:
     currency = CURRENCY_BY_CATEGORY.get(category["key"], "")
     blocks = [separator(), section_title(category["label"])]
     blocks += [pick_row(i + 1, entry, is_etf, currency) for i, entry in enumerate(category["picks"])]
-    if category["note"]:
-        blocks.append(text(category["note"], size="xs", color=INK, margin="sm"))
     return blocks
 
 

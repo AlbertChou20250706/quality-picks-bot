@@ -1,5 +1,5 @@
 """Rank each candidate pool by real, code-computed metrics (never model-
-guessed) and keep the top 3 per category. A candidate missing a metric gets
+guessed) and keep the top 10 per category. A candidate missing a metric gets
 no credit on that dimension rather than an assumed/average value — the
 screen should never reward missing data.
 
@@ -16,7 +16,7 @@ BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
 DATA_PATH = BASE_DIR / "data" / "latest.json"
 OUTPUT_PATH = BASE_DIR / "data" / "top_picks.json"
 
-TOP_N = 3
+TOP_N = 10
 
 
 def normalize(values: list) -> list:

@@ -1,8 +1,9 @@
 """Generate the narrative for the quality-picks report via the Claude API.
-The top-3 lists and every number in them are already decided by
-screen_and_rank.py — the model only explains, using the code-computed
-numbers, why each pick qualifies. Falls back to plain text if the model
-doesn't follow the delimiter format, so a report still goes out either way.
+The top-10 lists and every number in them are already decided by
+screen_and_rank.py — the model only explains, per pick, using the
+code-computed numbers, why it qualifies. Falls back to plain text if the
+model doesn't follow the delimiter format, so a report still goes out
+either way.
 """
 
 import json
@@ -23,11 +24,11 @@ MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-5")
 DISCLAIMER = "投資一定有風險，基金/ETF/股票投資有賺有賠，以上資訊非投資建議"
 
 SECTION_RE = re.compile(r"^##([A-Z_]+)##\s*$", re.MULTILINE)
-CATEGORY_KEYS = {
-    "TW_STOCKS": "tw_stocks",
-    "TW_ETF": "tw_etf",
-    "US_STOCKS": "us_stocks",
-    "US_ETF": "us_etf",
+CATEGORY_NOTE_KEYS = {
+    "tw_stocks": "TW_STOCKS",
+    "tw_etf": "TW_ETF",
+    "us_stocks": "US_STOCKS",
+    "us_etf": "US_ETF",
 }
 CATEGORY_LABELS = {
     "tw_stocks": "台股優質個股",
@@ -61,27 +62,50 @@ def parse_sections(text: str) -> dict | None:
 
     return {
         "summary": raw.get("SUMMARY", "").strip(),
-        "tw_stocks_note": raw.get("TW_STOCKS", "").strip(),
-        "tw_etf_note": raw.get("TW_ETF", "").strip(),
-        "us_stocks_note": raw.get("US_STOCKS", "").strip(),
-        "us_etf_note": raw.get("US_ETF", "").strip(),
         "outlook": raw.get("OUTLOOK", "").strip(),
+        "notes_by_category": {name: raw.get(name, "") for name in CATEGORY_NOTE_KEYS.values()},
     }
 
 
-def render_markdown(parsed: dict, top_picks: dict, today: str) -> str:
-    lines = [f"優質標的推薦（{today}）", "", parsed["summary"], ""]
-    for key, note_key in [
-        ("tw_stocks", "tw_stocks_note"),
-        ("tw_etf", "tw_etf_note"),
-        ("us_stocks", "us_stocks_note"),
-        ("us_etf", "us_etf_note"),
-    ]:
-        lines.append(f"【{CATEGORY_LABELS[key]}】")
+def parse_pick_notes(block_text: str) -> dict:
+    """Parse "代號 一句話理由" lines into {symbol: note}. A line that doesn't
+    start with a recognizable symbol token is skipped rather than guessed at."""
+    notes = {}
+    for line in block_text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(maxsplit=1)
+        if len(parts) == 2:
+            symbol, note = parts
+            notes[symbol] = note.strip()
+    return notes
+
+
+def attach_notes(top_picks: dict, parsed: dict) -> dict:
+    """Return a deep-ish copy of top_picks with each pick's model-written
+    note attached by symbol match. A pick the model didn't cover just gets
+    no note rather than an invented one."""
+    categorized = {}
+    for key, section_name in CATEGORY_NOTE_KEYS.items():
+        notes_by_symbol = parse_pick_notes(parsed["notes_by_category"].get(section_name, ""))
+        picks = []
         for entry in top_picks[key]:
-            lines.append(f"{entry['symbol']} {entry['name']}（評分 {entry['score']}）")
-        lines.append("")
-        lines.append(parsed[note_key])
+            enriched = dict(entry)
+            enriched["note"] = notes_by_symbol.get(entry["symbol"], "")
+            picks.append(enriched)
+        categorized[key] = picks
+    return categorized
+
+
+def render_markdown(parsed: dict, categorized_picks: dict, today: str) -> str:
+    lines = [f"優質標的推薦（{today}）", "", parsed["summary"], ""]
+    for key in CATEGORY_NOTE_KEYS:
+        lines.append(f"【{CATEGORY_LABELS[key]}】")
+        for rank, entry in enumerate(categorized_picks[key], start=1):
+            lines.append(f"{rank}. {entry['symbol']} {entry['name']}（評分 {entry['score']}）")
+            if entry["note"]:
+                lines.append(f"　{entry['note']}")
         lines.append("")
     lines += ["【後續觀察】", parsed["outlook"], ""]
     lines += [DISCLAIMER]
@@ -95,7 +119,7 @@ def main() -> None:
     client = anthropic.Anthropic()
     response = client.messages.create(
         model=MODEL,
-        max_tokens=16000,
+        max_tokens=24000,
         output_config={"effort": "medium"},
         system=system_prompt,
         messages=[{"role": "user", "content": build_user_content(top_picks)}],
@@ -118,7 +142,9 @@ def main() -> None:
         print(f"wrote {archive_path} (plain text fallback)")
         return
 
-    archive_text = render_markdown(parsed, top_picks, today)
+    categorized_picks = attach_notes(top_picks, parsed)
+
+    archive_text = render_markdown(parsed, categorized_picks, today)
     archive_path.write_text(archive_text, encoding="utf-8")
     (OUTPUT_DIR / "report.txt").write_text(archive_text, encoding="utf-8")
 
@@ -129,13 +155,8 @@ def main() -> None:
         "outlook": parsed["outlook"],
         "disclaimer": DISCLAIMER,
         "categories": [
-            {"key": key, "label": CATEGORY_LABELS[key], "note": parsed[note_key], "picks": top_picks[key]}
-            for key, note_key in [
-                ("tw_stocks", "tw_stocks_note"),
-                ("tw_etf", "tw_etf_note"),
-                ("us_stocks", "us_stocks_note"),
-                ("us_etf", "us_etf_note"),
-            ]
+            {"key": key, "label": CATEGORY_LABELS[key], "picks": categorized_picks[key]}
+            for key in CATEGORY_NOTE_KEYS
         ],
         "mode": "structured",
     }

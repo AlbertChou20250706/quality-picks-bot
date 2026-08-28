@@ -4,5 +4,9 @@
   {"symbol": "QQQ", "name": "Invesco QQQ"},
   {"symbol": "VTI", "name": "Vanguard Total Stock Market ETF"},
   {"symbol": "SCHD", "name": "Schwab US Dividend Equity ETF"},
-  {"symbol": "VYM", "name": "Vanguard High Dividend Yield ETF"}
+  {"symbol": "VYM", "name": "Vanguard High Dividend Yield ETF"},
+  {"symbol": "IVV", "name": "iShares Core S&P 500 ETF"},
+  {"symbol": "DIA", "name": "SPDR Dow Jones Industrial Average ETF"},
+  {"symbol": "DGRO", "name": "iShares Core Dividend Growth ETF"},
+  {"symbol": "VIG", "name": "Vanguard Dividend Appreciation ETF"}
 ]

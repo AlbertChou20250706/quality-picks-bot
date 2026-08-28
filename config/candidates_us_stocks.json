@@ -6,5 +6,12 @@
   {"symbol": "PG", "name": "寶僑"},
   {"symbol": "KO", "name": "可口可樂"},
   {"symbol": "V", "name": "Visa"},
-  {"symbol": "MA", "name": "萬事達卡"}
+  {"symbol": "MA", "name": "萬事達卡"},
+  {"symbol": "AMZN", "name": "亞馬遜"},
+  {"symbol": "NVDA", "name": "輝達"},
+  {"symbol": "HD", "name": "家得寶"},
+  {"symbol": "COST", "name": "好市多"},
+  {"symbol": "MCD", "name": "麥當勞"},
+  {"symbol": "PEP", "name": "百事"},
+  {"symbol": "WMT", "name": "沃爾瑪"}
 ]
