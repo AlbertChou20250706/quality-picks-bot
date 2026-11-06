@@ -1,0 +1,31 @@
+name: send-custom-message
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: '要發送到 LINE 群組的文字內容'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install requests
+
+      - name: Send custom LINE message
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_PUSH_TARGET_IDS: ${{ secrets.LINE_PUSH_TARGET_IDS }}
+          MESSAGE_TEXT: ${{ github.event.inputs.message }}
+        run: python src/send_custom_message.py
